@@ -1,61 +1,72 @@
 use crate::lib;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 enum Num {
-    R(usize),              // Regular
+    R(usize),              // Regular number
     P(Box<Num>, Box<Num>), // Pair
+    Nil,
+}
+
+impl fmt::Display for Num {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Num::R(n) => n.fmt(f),
+            Num::P(l, r) => unsafe { write!(f, "[{},{}]", l, r) },
+            Num::Nil => "nil".fmt(f),
+        }
+    }
 }
 
 impl Num {
     fn from_str(s: &str) -> Result<Num, String> {
-        Num::from_chars(&s.replace(" ", "").chars().collect::<Vec<char>>());
-        Ok(Num::R(0))
+        let n = Num::from_chars_recursive(&s.replace(" ", "").chars().collect::<Vec<char>>());
+        Ok(n)
     }
 
-    fn from_str_2(s: &str) -> Result<Num, String> {
-        Num::from_chars_2(&s.replace(" ", "").chars().collect::<Vec<char>>(), 0, 0);
-        Ok(Num::R(0))
-    }
-
-    fn from_chars(chars: &[char]) -> Option<Num> {
-        let mut depth = 0;
-        let mut vals: Vec<(usize, Option<u32>)> = vec![];
-
-        for i in 0..chars.len() {
+    fn from_chars_recursive(chars: &[char]) -> Num {
+        let mut left = Num::Nil;
+        let mut right = Num::Nil;
+        let mut current_depth: usize = 0;
+        let mut i: usize = 0;
+        while i < chars.len() && (matches!(left, Num::Nil) || matches!(right, Num::Nil)) {
             match chars[i] {
-                '[' => depth += 1,
-                ']' => depth -= 1,
-                c @ '0'..='9' => vals.push((depth, c.to_digit(10))),
+                '[' => {
+                    current_depth += 1;
+                    // current_depth == 1 means we are at the start of a new pair
+                    if current_depth == 1 {
+                        left = Num::from_chars_recursive(&chars[i + 1..]);
+                    }
+                }
+                ',' => {
+                    // current_depth == 1 means we are at the end of the left side of a pair
+                    if current_depth == 1 {
+                        right = Num::from_chars_recursive(&chars[i + 1..]);
+                    }
+                }
+                ']' => {
+                    current_depth -= 1;
+                }
+                c @ '0'..='9' => {
+                    // current_depth == 0 means we are at the start of a new number
+                    if current_depth == 0 {
+                        let val = c.to_digit(10).unwrap() as usize;
+                        return Num::R(val);
+                    }
+                }
                 _ => (),
             }
+            i += 1;
         }
 
-        Num::P(Box::new(Num::R(0)), Box::new(Num::R(0)));
-
-        println!("vals: {:?}", vals);
-
-        None
-    }
-
-    fn from_chars_2(chars: &[char], i: usize, depth: usize) -> Option<Num> {
-        match chars[i] {
-            '[' => Num::from_chars_2(chars, i + 1, depth + 1),
-            ']' => Num::from_chars_2(chars, i + 1, depth - 1),
-            c @ '0'..='9' => {
-                if let Some(n) = c.to_digit(10) {
-                    Some(Num::R(n as usize))
-                } else {
-                    None
-                }
-            }
-            _ => Num::from_chars_2(chars, i + 1, depth),
-        }
+        Num::P(Box::new(left), Box::new(right))
     }
 
     fn mag(&self) -> usize {
         match self {
             Num::R(v) => *v,
             Num::P(l, r) => 3 * l.mag() + 2 * r.mag(),
+            Num::Nil => 0,
         }
     }
 
@@ -97,15 +108,12 @@ impl Num {
 
 pub fn puzzle1(input_filename: &str) -> isize {
     let input = lib::read_lines(input_filename);
-    // let n = input
-    //     .iter()
-    //     .filter_map(|s| Num::from_str(s).ok())
-    //     .collect::<Vec<Num>>();
 
-    // println!("{:?}", n);
+    let r = Num::from_str(&input[7]).expect("isgood");
 
-    Num::from_str(&input[7]);
-    Num::from_str_2(&input[7]);
+    unsafe {
+        println!("{}", r);
+    }
 
     0
 }

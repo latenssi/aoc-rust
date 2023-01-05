@@ -285,3 +285,7 @@ where
 
     return dist;
 }
+
+pub fn modulo(a: usize, b: usize) -> usize {
+    ((a % b) + b) % b
+}
