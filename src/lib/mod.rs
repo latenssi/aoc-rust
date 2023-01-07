@@ -173,6 +173,20 @@ pub fn neighbours(s: &Shape, i: usize, include_diag: bool) -> Vec<usize> {
     .collect()
 }
 
+pub fn neighbours_2(s: &Shape, i: usize, include_diag: bool) -> Vec<Option<usize>> {
+    (if !include_diag {
+        NEIGHBOURS_NOT_DIAG.to_vec()
+    } else {
+        NEIGHBOURS_DIAG.to_vec()
+    })
+    .into_iter()
+    .map(|f| match f(s, &i_to_point(s, i)) {
+        Some(p) => Some(point_to_i(s, &p)),
+        None => None,
+    })
+    .collect()
+}
+
 pub fn map_i(from: &Shape, to: &Shape, offset: &Shape, i: usize) -> usize {
     let mut p = i_to_point(from, i);
     p.x += offset.w;
